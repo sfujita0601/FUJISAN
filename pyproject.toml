@@ -11,3 +11,13 @@ dependencies = [
     "scikit-learn>=1.5.2",
     "seaborn>=0.13.2",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+run_FUJISAN = 'FUJISAN.run_FUJISAN:main'
+
+[tool.hatch.build.targets.wheel]
+packages = ["FUJISAN"]
