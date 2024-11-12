@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-# refs:https://runebook.dev/ja/docs/scikit_learn/auto_examples/model_selection/plot_roc_crossval
-# refs: 
+
 import pandas as pd
 from sklearn import metrics
 from sklearn.model_selection import KFold, train_test_split, cross_val_score, cross_val_predict
@@ -18,7 +17,6 @@ from sklearn.ensemble import AdaBoostClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis as QDA
 import optuna.integration.lightgbm as lgb
-
 from lightgbm import early_stopping
 from sklearn import clone
 import matplotlib.pyplot as plt
@@ -39,36 +37,35 @@ import sys
 
 def PreprocessData(input_dir,FileInfo, output_dir):
     """
-    データの前処理を行う
+    Perform data preprocessing
     
     Parameters
     ----------
     input_dir : str
-        入力データのディレクトリ
+        Input data directory
     FileInfo : list
-        ファイル情報
+        File information
     output_dir : str
-        出力データのディレクトリ
+        Directory of output data
     
     Returns 
     -------
     XSame_train : DataFrame
-        同一構造の学習データ
+        Training data in the same structure
     XDiff_train : DataFrame
-        異なる構造の学習データ
+        Training data with different structure
     XSame_test : DataFrame
-        同一構造のテストデータ
+        Test data with the same structure
     XDiff_test : DataFrame
-        異なる構造のテストデータ
+        Test data with different structures
     ySame_train : array
-        同一構造の学習データのラベル
+        Labels for training data of the same structure.
     yDiff_train : array
-        異なる構造の学習データのラベル
+        Labels for training data with different structures
     ySame_test : array  
-        同一構造のテストデータのラベル
+        labels for test data with the same structure
     yDiff_test : array
-        異なる構造のテストデータのラベル
-    
+        Labels for test data with different structures
     """
 
     [cond, date, Dtype,Ftype] = FileInfo
@@ -85,7 +82,6 @@ def PreprocessData(input_dir,FileInfo, output_dir):
             nearest_multiple_1000 = int(np.round(min_value / 100)) * 100
         else:
             nearest_multiple_1000 = int(np.round(min_value / 100)-1) * 100
-        print(nearest_multiple_1000)
         random.seed(42)
         random_indices = random.sample(range(len(XSame) ),nearest_multiple_1000)
         # Extract the random lines from the DataFrame
@@ -128,7 +124,6 @@ def PreprocessData(input_dir,FileInfo, output_dir):
 
     """
     for column in ['Full_log10(E_value)','Full_SeqID', 'Dmn_RMSD','Dmn_SeqID','Dmn_TM', 'Pckt_RMSD', 'Pckt_SeqID','label']:
-        #縦軸を合わせる
         data_test.hist(column=column, by='label',  figsize=(8,4),range=(min(data_test[column]), max(data_test[column])))#bins=40,
         plt.savefig(output_dir+'Figure/'+column+'_test.png')
         plt.close()
@@ -141,6 +136,9 @@ def PreprocessData(input_dir,FileInfo, output_dir):
     return(X_train,X_test,y_train,y_test,FileInfo,data_test)
 
 def DataLoad(input_dir,FileInfo, output_dir):
+    """
+    Load data
+    """
     [cond, date, Dtype,Ftype] = FileInfo
     os.makedirs(output_dir+'Figure/', exist_ok=True)
     os.makedirs(output_dir+'Analysis/', exist_ok=True)
@@ -152,29 +150,26 @@ def DataLoad(input_dir,FileInfo, output_dir):
     analdata = pd.read_csv('./test/'+cond+'.tsv', sep='\t',header =0, names=Col_names, index_col=None)
 
 
-    #全長特徴量
     E_value = np.log10(np.array(analdata['E-value'].astype(float)))
     Indentity = np.array(analdata['Identity'].astype(float))
-    #ドメイン特徴量
     RMSD = np.array(analdata['RMSD'].astype(float))
-    TMscoreSame = np.array(analdata['TM-score1'].astype(float))# + data.iloc[:,3].astype(float))/2)
+    TMscoreSame = np.array(analdata['TM-score1'].astype(float))
     TMscoreAve = np.array(analdata['TM-scoreAve'].astype(float))   
     SeqID = np.array(analdata['Seq_ID'].astype(float))
-    #ポケット特徴量
     Pck_RMSD = np.array(analdata['Pckt_RMSD'].astype(float))
     Pck_SeqID = np.array(analdata['Pckt_SeqID'].astype(float))
-
-    #機能
     Rhea_1 = analdata['Rhea ID1']
     Rhea_2 = analdata['Rhea ID2']
 
-    # 1列目2列めを結合したものをNameLabelとする
-    NameLabel = np.array(analdata['ProteinID1'] +'_'+ analdata['ProteinID2'])# + analdata['Chain_len1'] + analdata['Chain_len2'])
+    NameLabel = np.array(analdata['ProteinID1'] +'_'+ analdata['ProteinID2'])
 
 
     return (E_value,Indentity, RMSD,TMscoreSame, TMscoreAve, SeqID, Pck_RMSD,Pck_SeqID, NameLabel, Rhea_1, Rhea_2)
 
 def evaluate(y_test, y_pred):
+        """
+        Calculate accuracy, precision, recall, f1, auc
+        """
         accuracy = accuracy_score(y_test, y_pred)
         precision = precision_score(y_test, y_pred)
         recall = recall_score(y_test, y_pred)
@@ -241,12 +236,14 @@ def mkEvalStats(data,input_dir,FileInfo,output_dir):
     MetricDict['Eval'] = [list(data['recall']),list(data['FPRate']),list(data['precision']),auc]
     ##with open(output_dir+'Analysis/AUC_Eval.txt', mode='w') as f:
     ##    f.write(str(auc))
-    
 
     return(MetricDict)
  
 
 def LightGBM(X_train,X_test,y_train,y_test,FileInfo,MetricDict,data,output_dir ):
+    """
+    Load or build LightGBM to predict
+    """
     class TunerCVCheckpointCallback(object):
         """Callback to retrieve trained models from Optuna's LightGBMTunerCV"""
 
@@ -442,6 +439,9 @@ def LightGBM(X_train,X_test,y_train,y_test,FileInfo,MetricDict,data,output_dir )
     return(model,auc,MetricDict)
 
 def SHAP(model,X_test,output_dir):
+    """
+    Calculate SHAP values
+    """
     import shap
 
     X, y = shap.datasets.adult()
@@ -476,14 +476,10 @@ def SHAP(model,X_test,output_dir):
     plt.close()
 
 
-
-
-
-
 def PlotMetrics(MetricDict,Dtype, input_dir,output_dir):
-    #MetricDictの中身を取り出す
-    #MetricDict = {'LightGBM': [[recall_],[FPRate]]}
-
+    """
+    Plot the ROC curve and PR curve
+    """
 
     recall_LightGBM = MetricDict['LightGBM'][0][0]
     FPRate_LightGBM = MetricDict['LightGBM'][1][0]
@@ -499,7 +495,7 @@ def PlotMetrics(MetricDict,Dtype, input_dir,output_dir):
     with open(output_dir+'Analysis/AUC_Eval'+Dtype+'.txt', mode='w') as f:
         f.write(str(AUC_Eval))
 
-    #2つのROC曲線をプロットする
+    # Plot ROC curve
     plt.figure()
     #plt.plot(FPRate_LightGBM, recall_LightGBM, label='FUJISAN({:.4f})'.format(AUC_LightGBM),color='black')
     plt.plot(FPRate_LightGBM, recall_LightGBM, label='FUJISAN(0.8701)'.format(AUC_LightGBM),color='black')
@@ -517,12 +513,11 @@ def PlotMetrics(MetricDict,Dtype, input_dir,output_dir):
     AUCPR_LightGBM = metrics.auc(list(PRecall_LightGBM), list(Precision_LightGBM))
     AUCPR_Eval = metrics.auc(list(recall_Eval), list(Precision_Eval))
 
-    #aucをtxtで保存する
     with open(output_dir+'Analysis/AUCPR_Eval'+Dtype+'.txt', mode='w') as f:
         f.write(str(AUCPR_Eval))
 
 
-    ### PR曲線も描画する
+    # Plot PR curve
     plt.figure()
     #plt.plot([[0]+[PRecall_LightGBM[0]]+list(PRecall_LightGBM)], [[1,1]+list(Precision_LightGBM)])#, label='LightGBM({:.4})'.format(AUCPR_LightGBM), color='black')
     #plt.plot(list(PRecall_LightGBM), list(Precision_LightGBM), label='FUJISAN({:.4f})'.format(AUCPR_LightGBM), color='black')
@@ -541,33 +536,23 @@ def specificity_score(y_true, y_pred):
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred).flatten()
     return tn / (tn + fp)
 
-
-
 def main(): 
-
-    cond = 'same'; date = ''; Dtype=''; Ftype = ''; FileInfo = [cond, date, Dtype, Ftype]#Eval_LT_ten,imbalance, imbalance_testOnly #EvalOnly, PerfectMatch
+    cond = 'same'; date = ''; Dtype=''; Ftype = ''; FileInfo = [cond, date, Dtype, Ftype]
     output_dir = './'
-    input_dir = '/Users/sfujita/Library/CloudStorage/GoogleDrive-ioyuropa@gmail.com/マイドライブ/TeradaLab/Research/PredictionofProteinFunction/'
     input_dir = './test/'
 
     X_train,X_test,y_train,y_test,FileInfo,data_test = PreprocessData(input_dir,FileInfo, output_dir)
     MetricDict={}
     MetricDict=mkEvalStats(data_test,input_dir,FileInfo,output_dir)
-    ### lightGBM
+    # lightGBM
     model,auc,MetricDict=LightGBM(X_train,X_test,y_train,y_test,FileInfo,MetricDict,data_test,output_dir )
 
     PlotMetrics(MetricDict,Dtype, input_dir,output_dir)
 
-    #SHAP
+    # SHAP
     SHAP(model,X_test[[ 'Full_log10(E_value)','Full_SeqID', 'Dmn_RMSD','Dmn_SeqID','Dmn_TM', 'Pckt_RMSD', 'Pckt_SeqID']],output_dir)
 
-
-        
-
-
 if __name__ == "__main__":
-
-
     main()
 
     
