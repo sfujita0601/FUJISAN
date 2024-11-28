@@ -20,7 +20,8 @@ python3.11 -m pip install .
 
 ```
 
-## Usage
+## Demo
+
 
 An example to run:
 ```bash
