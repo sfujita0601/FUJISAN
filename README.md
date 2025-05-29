@@ -31,3 +31,8 @@ python3.11 FUJISAN/run_FUJISAN.py
 Expected output files:
 - Analysis/ : .txt files and .csv files.
 - Figure/ : Figures used in the article.   
+
+
+### Update
+
+* 2025/05/29: Adding models without pocket features and changing the model used
