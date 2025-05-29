@@ -285,10 +285,10 @@ def LightGBM(X_train,X_test,y_train,y_test,FileInfo,MetricDict,data,output_dir )
     ]
 
     # Check if the file exists
-    file_path=output_dir +'/model/LightGBMmodel_best.txt'
+    file_path=output_dir +'/model/LightGBMmodel_0102BitScore.txt'
     print(file_path)
     if os.path.isfile(file_path):
-        model = lgb.Booster(model_file=output_dir +'/model/LightGBMmodel_best.txt')
+        model = lgb.Booster(model_file=output_dir +'/model/LightGBMmodel_0102BitScore.txt')
     else:
         print('model is not found')
 
