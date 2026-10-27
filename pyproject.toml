@@ -1,7 +1,7 @@
 [project]
 name = "fujisan"
 version = "0.1.0"
-description = "Add your description here"
+description = "FUJISAN: prediction of protein functional identity from sequence and structural similarity features"
 readme = "README.md"
 requires-python =  ">=3.9"
 dependencies = [
@@ -10,6 +10,7 @@ dependencies = [
     "pandas>=2.2.3",
     "scikit-learn>=1.5.2",
     "seaborn>=0.13.2",
+    "shap>=0.46",
 ]
 
 [build-system]

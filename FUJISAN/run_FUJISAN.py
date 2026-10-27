@@ -16,7 +16,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis as QDA
-import optuna.integration.lightgbm as lgb
+import lightgbm as lgb
 from lightgbm import early_stopping
 from sklearn import clone
 import matplotlib.pyplot as plt
@@ -33,6 +33,71 @@ from sklearn.metrics import matthews_corrcoef
 from sklearn.metrics import PrecisionRecallDisplay
 
 import sys
+import argparse
+
+
+MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'model')
+
+# Classification threshold of the published model (Fujita & Terada, 2024).
+# Fixed value; it is NOT optimized on the test set.
+PAPER2024_THRESHOLD = 0.5
+
+PAPER2024_FEATURES = ['Full_log10(E_value)', 'Full_SeqID', 'Dmn_RMSD', 'Dmn_SeqID', 'Dmn_TM', 'Pckt_RMSD', 'Pckt_SeqID']
+UPDATED_FEATURES = ['BitScore', 'Full_SeqID', 'Dmn_RMSD', 'Dmn_SeqID', 'Dmn_TM']
+
+MODEL_CONFIGS = {
+    'paper2024': {
+        'model_path': os.path.join(MODEL_DIR, 'fujisan_paper2024_evalue_pocket_lgbm.txt'),
+        'features': PAPER2024_FEATURES,
+        'threshold': PAPER2024_THRESHOLD,
+        'description': 'Model used in the published study (E-value + sequence + domain + pocket features)',
+    },
+    'updated': {
+        'model_path': os.path.join(MODEL_DIR, 'fujisan_updated_bitscore_nopocket_lgbm.txt'),
+        'features': UPDATED_FEATURES,
+        # No validated threshold is available for this model in this repository.
+        'threshold': None,
+        'description': 'Post-publication model (BitScore + sequence + domain features, no pocket features)',
+    },
+}
+
+
+def load_model(model_name):
+    """
+    Load a FUJISAN model and check that its feature schema matches MODEL_CONFIGS
+    """
+    config = MODEL_CONFIGS[model_name]
+    if not os.path.isfile(config['model_path']):
+        raise FileNotFoundError('Model file not found: ' + config['model_path'])
+    model = lgb.Booster(model_file=config['model_path'])
+    if model.feature_name() != config['features']:
+        raise ValueError(
+            "Feature schema of model '" + model_name + "' does not match MODEL_CONFIGS.\n"
+            f"Model file: {model.feature_name()}\n"
+            f"MODEL_CONFIGS: {config['features']}"
+        )
+    return model
+
+
+def check_features(model, X):
+    """
+    Raise an error if the columns of X differ from the features expected by the model
+    """
+    expected_features = model.feature_name()
+    if list(X.columns) != expected_features:
+        raise ValueError(
+            "Feature mismatch between the selected model and input data.\n"
+            f"Model expects: {expected_features}\n"
+            f"Input contains: {list(X.columns)}"
+        )
+
+
+def predict_proba(model, X):
+    """
+    Predict the probability that a protein pair has identical function
+    """
+    check_features(model, X)
+    return model.predict(X, num_iteration=model.best_iteration)
 
 
 def PreprocessData(input_dir,FileInfo, output_dir):
@@ -112,7 +177,7 @@ def PreprocessData(input_dir,FileInfo, output_dir):
     """
 
     # Split the data into training and testing sets
-    X_train = data_train[[ 'Full_log10(E_value)','Full_SeqID', 'Dmn_RMSD','Dmn_SeqID','Dmn_TM', 'Pckt_RMSD', 'Pckt_SeqID']].astype('float')
+    X_train = data_train[PAPER2024_FEATURES].astype('float')
     y_train = data_train['label']  
 
     # Concatenate the data into a single DataFrame
@@ -130,7 +195,7 @@ def PreprocessData(input_dir,FileInfo, output_dir):
     """
 
     # Split the data into training and testing sets
-    X_test = data_test[[ 'Full_log10(E_value)','Full_SeqID', 'Dmn_RMSD','Dmn_SeqID','Dmn_TM', 'Pckt_RMSD', 'Pckt_SeqID']].astype('float')
+    X_test = data_test[PAPER2024_FEATURES].astype('float')
     y_test = data_test['label']  
 
     return(X_train,X_test,y_train,y_test,FileInfo,data_test)
@@ -240,9 +305,9 @@ def mkEvalStats(data,input_dir,FileInfo,output_dir):
     return(MetricDict)
  
 
-def LightGBM(X_train,X_test,y_train,y_test,FileInfo,MetricDict,data,output_dir ):
+def LightGBM(X_train,X_test,y_train,y_test,FileInfo,MetricDict,data,output_dir,model_name='paper2024'):
     """
-    Load or build LightGBM to predict
+    Load LightGBM model and evaluate it on the test data
     """
     class TunerCVCheckpointCallback(object):
         """Callback to retrieve trained models from Optuna's LightGBMTunerCV"""
@@ -284,16 +349,12 @@ def LightGBM(X_train,X_test,y_train,y_test,FileInfo,MetricDict,data,output_dir )
         checkpoint_cb,early_stopping(100)
     ]
 
-    # Check if the file exists
-    file_path=output_dir +'/model/LightGBMmodel_0102BitScore.txt'
-    print(file_path)
-    if os.path.isfile(file_path):
-        model = lgb.Booster(model_file=output_dir +'/model/LightGBMmodel_0102BitScore.txt')
-    else:
-        print('model is not found')
+    config = MODEL_CONFIGS[model_name]
+    print(model_name + ': ' + config['model_path'])
+    model = load_model(model_name)
 
     # Predicting test data
-    y_pred = model.predict(X_test, num_iteration=model.best_iteration)
+    y_pred = predict_proba(model, X_test)
 
     # Caluculate AUC (Area Under the Curve) 
     fpr, tpr, thresholds = metrics.roc_curve(y_test, y_pred)
@@ -320,7 +381,7 @@ def LightGBM(X_train,X_test,y_train,y_test,FileInfo,MetricDict,data,output_dir )
     lgb.plot_importance(model,importance_type='gain')
     plt.savefig(output_dir+'Figure/LightGBM_importance.png',bbox_inches="tight")
 
-    ResDF=pd.DataFrame(data=None,index=['Light GBM'], columns=['Accuracy','Precision','Recall','FPR','MCC','F1','AUC','PR_AUC','Threshold'])
+    ResDF=pd.DataFrame(data=None,index=['Light GBM'], columns=['Accuracy','Precision','Recall','FPR','MCC','F1','AUC','PR_AUC','Threshold','F1_max_test_diagnostic','Threshold_F1max_test_diagnostic'])
 
     # Calculate accuracy, precision, recall, f1, auc 
     precision, recall, threshold_from_pr = metrics.precision_recall_curve(y_true = y_test, probas_pred = y_pred)
@@ -330,12 +391,12 @@ def LightGBM(X_train,X_test,y_train,y_test,FileInfo,MetricDict,data,output_dir )
     f1 = np.divide(a,b,out=np.zeros_like(a), where=b!=0)
 
     MetricDict['LightGBM'] = [[tpr],[fpr],[precision],[recall],[f1],auc]
-    # ptimal Value
-    # find optimal threshold
+    # F1-maximizing threshold on the TEST data. Diagnostic only: it is not used for
+    # classification, because choosing a threshold on the test labels would leak them.
     idx_opt = np.argmax(f1)
 
-    threshold_opt = threshold_from_pr[idx_opt] 
-    idx_opt_from_pr = np.where(threshold_from_pr == threshold_opt) 
+    threshold_opt = threshold_from_pr[idx_opt]
+    idx_opt_from_pr = np.where(threshold_from_pr == threshold_opt)
 
     # Draw a graph of f1 for threshold_from_pr
     fig, ax = plt.subplots(facecolor="w")
@@ -344,26 +405,30 @@ def LightGBM(X_train,X_test,y_train,y_test,FileInfo,MetricDict,data,output_dir )
     ax.grid()
    
     ax.plot(threshold_from_pr, f1[:-1], label="F1", color="black")
-    ax.plot([threshold_opt, threshold_opt], [0, 1], linestyle="--", lw=2, color="r", label="Threshold_opt", alpha=0.8)
+    ax.plot([threshold_opt, threshold_opt], [0, 1], linestyle="--", lw=2, color="r", label="F1-max threshold (test, diagnostic)", alpha=0.8)
     ax.legend()
     #plt.savefig(output_dir+'Figure/Threshold_F1_LightGBM.png',bbox_inches="tight")
 
-    print('threshold_opt:',threshold_opt)
-    print('f1_opt:',f1[idx_opt])
-    # Save f1 plot data and threshold_opt in csv
+    print('F1-max threshold on test data (diagnostic, not used):',threshold_opt)
+    print('F1 max on test data (diagnostic):',f1[idx_opt])
+    # Save f1 plot data and the diagnostic F1-max threshold in csv
     df = pd.DataFrame({'threshold':
                         threshold_from_pr, 'f1':f1[:-1],
-                        'threshold_opt':[threshold_opt]*len(threshold_from_pr),
-                        'f1_opt':[f1[idx_opt]]*len(threshold_from_pr)})
+                        'threshold_f1max_test':[threshold_opt]*len(threshold_from_pr),
+                        'f1_max_test':[f1[idx_opt]]*len(threshold_from_pr)})
     df.to_csv(output_dir+'Analysis/F1_LightGBM.csv', sep=',',header =True, index=True)
 
     X_test['y_pred'] = y_pred
     X_test.to_csv(output_dir+'Analysis/Testdata_y_pred'+date+Dtype+Ftype+'.csv', sep=',',header =True, index=True)
     data['y_pred'] = y_pred
 
-    threshold_opt=0.5#threshold_from_pr 
-    y_pred[y_pred>=threshold_opt] = 1
-    y_pred[y_pred<threshold_opt] = 0
+    # Fixed classification threshold of the selected model
+    threshold = config['threshold']
+    if threshold is None:
+        raise ValueError("No validated classification threshold is defined for model '" + model_name + "'.")
+    print('classification threshold (fixed):', threshold)
+    y_pred[y_pred>=threshold] = 1
+    y_pred[y_pred<threshold] = 0
 
 
     # Plot
@@ -372,7 +437,7 @@ def LightGBM(X_train,X_test,y_train,y_test,FileInfo,MetricDict,data,output_dir )
     ax.grid()
     ax.plot(threshold_from_pr, precision[:-1], label="Precision")
     ax.plot(threshold_from_pr, recall[:-1], label="Recall")
-    ax.plot([threshold_opt, threshold_opt], [0, 1], linestyle="--", lw=2, color="r", label="Threshold_opt", alpha=0.8)
+    ax.plot([threshold, threshold], [0, 1], linestyle="--", lw=2, color="r", label="Threshold (fixed)", alpha=0.8)
     ax.legend()
     #plt.savefig(output_dir+'Figure/Threshold_Recall_Precision_LightGBM.png',bbox_inches="tight")
     plt.close()
@@ -382,7 +447,7 @@ def LightGBM(X_train,X_test,y_train,y_test,FileInfo,MetricDict,data,output_dir )
                         threshold_from_pr, 'precision':precision[:-1],'recall':recall[:-1]})
     df.to_csv(output_dir+'Analysis/PR_LightGBM.csv', sep=',',header =True, index=True)
     
-    # Get the value of recall when threshold_from_pr is the same as threshold_opt
+    # Get the value of recall at the F1-max threshold on test data (diagnostic only)
     recall_opt = recall[idx_opt_from_pr][0]
     # Plot the ROC curve
     fig, ax = plt.subplots(facecolor="w")
@@ -393,7 +458,7 @@ def LightGBM(X_train,X_test,y_train,y_test,FileInfo,MetricDict,data,output_dir )
     plt.ylabel('True Positive Rate')
     plt.grid(True)
     plt.plot([0, 1], [0, 1], linestyle="--", lw=2, color="r", label="Chance", alpha=0.8)
-    plt.plot([0, 1], [recall_opt, recall_opt], linestyle="--", lw=2, color="b", label="Recall_opt", alpha=0.8)
+    plt.plot([0, 1], [recall_opt, recall_opt], linestyle="--", lw=2, color="b", label="Recall at F1-max threshold (test, diagnostic)", alpha=0.8)
     #plt.plot([fpr[idx_opt]], [tpr[idx_opt]], marker='o', markersize=10, color="r", label="Threshold_opt", alpha=0.8)
     #plt.savefig(output_dir+'Figure/ROC_LightGBM_opt.png',bbox_inches="tight")
     plt.close()
@@ -425,11 +490,13 @@ def LightGBM(X_train,X_test,y_train,y_test,FileInfo,MetricDict,data,output_dir )
     Accuracy = accuracy_score(y_test, y_pred)
     Precision = precision_score(y_test, y_pred)
     Recall = recall_score(y_test, y_pred)
-    F1 = max(f1)
+    # F1 at the fixed threshold, consistent with the other threshold-dependent metrics.
+    # The F1 maximized over test-set thresholds is reported separately as a diagnostic.
+    F1 = f1_score(y_test, y_pred)
     Spec = specificity_score(y_test, y_pred)
     FPR = 1 - Spec
     MCC = matthews_corrcoef(y_test, y_pred)
-    ResDF.loc['Light GBM']=[Accuracy, Precision, Recall, FPR, MCC, F1, auc,PR_auc,threshold_opt]
+    ResDF.loc['Light GBM']=[Accuracy, Precision, Recall, FPR, MCC, F1, auc,PR_auc,threshold,max(f1),threshold_opt]
     ResDF.to_csv(output_dir+'Analysis/LightGBMRes_'+date+Dtype+Ftype+'.csv', sep=',',header =True, index=True)
 
     data['y_pred_ovThresh'] = y_pred
@@ -443,9 +510,6 @@ def SHAP(model,X_test,output_dir):
     Calculate SHAP values
     """
     import shap
-
-    X, y = shap.datasets.adult()
-    shap.initjs()
 
     #TreeExplainer is an instance that obtains the SHAP values of a model in a decision tree system.
     X_test_shap = X_test.copy().reset_index(drop=True)
@@ -497,8 +561,7 @@ def PlotMetrics(MetricDict,Dtype, input_dir,output_dir):
 
     # Plot ROC curve
     plt.figure()
-    #plt.plot(FPRate_LightGBM, recall_LightGBM, label='FUJISAN({:.4f})'.format(AUC_LightGBM),color='black')
-    plt.plot(FPRate_LightGBM, recall_LightGBM, label='FUJISAN(0.8701)'.format(AUC_LightGBM),color='black')
+    plt.plot(FPRate_LightGBM, recall_LightGBM, label='FUJISAN({:.4f})'.format(AUC_LightGBM),color='black')
     plt.plot(FPRate_Eval, recall_Eval, label='Evalue({:.4f})'.format(AUC_Eval), color='blue')
 
     plt.grid(True)
@@ -520,8 +583,7 @@ def PlotMetrics(MetricDict,Dtype, input_dir,output_dir):
     # Plot PR curve
     plt.figure()
     #plt.plot([[0]+[PRecall_LightGBM[0]]+list(PRecall_LightGBM)], [[1,1]+list(Precision_LightGBM)])#, label='LightGBM({:.4})'.format(AUCPR_LightGBM), color='black')
-    #plt.plot(list(PRecall_LightGBM), list(Precision_LightGBM), label='FUJISAN({:.4f})'.format(AUCPR_LightGBM), color='black')
-    plt.plot(list(PRecall_LightGBM), list(Precision_LightGBM), label='FUJISAN(0.8793)'.format(AUCPR_LightGBM), color='black')
+    plt.plot(list(PRecall_LightGBM), list(Precision_LightGBM), label='FUJISAN({:.4f})'.format(AUCPR_LightGBM), color='black')
     #PrecisionRecallDisplay(precision=Precision_Eval, recall=recall_Eval).plot()
     plt.plot(recall_Eval, Precision_Eval, label='Evalue({:.4f})'.format(AUCPR_Eval), color='blue')
     plt.grid(True)
@@ -536,7 +598,13 @@ def specificity_score(y_true, y_pred):
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred).flatten()
     return tn / (tn + fp)
 
-def main(): 
+def main():
+    parser = argparse.ArgumentParser(description='Evaluate a FUJISAN model on the test data in ./test/')
+    parser.add_argument('--model', choices=list(MODEL_CONFIGS), default='paper2024',
+                        help='paper2024: model of the published study (default). '
+                             'updated: post-publication BitScore model (the test data in ./test/ has no BitScore column).')
+    args = parser.parse_args()
+
     cond = 'same'; date = ''; Dtype=''; Ftype = ''; FileInfo = [cond, date, Dtype, Ftype]
     output_dir = './'
     input_dir = './test/'
@@ -545,12 +613,12 @@ def main():
     MetricDict={}
     MetricDict=mkEvalStats(data_test,input_dir,FileInfo,output_dir)
     # lightGBM
-    model,auc,MetricDict=LightGBM(X_train,X_test,y_train,y_test,FileInfo,MetricDict,data_test,output_dir )
+    model,auc,MetricDict=LightGBM(X_train,X_test,y_train,y_test,FileInfo,MetricDict,data_test,output_dir,args.model)
 
     PlotMetrics(MetricDict,Dtype, input_dir,output_dir)
 
     # SHAP
-    SHAP(model,X_test[[ 'Full_log10(E_value)','Full_SeqID', 'Dmn_RMSD','Dmn_SeqID','Dmn_TM', 'Pckt_RMSD', 'Pckt_SeqID']],output_dir)
+    SHAP(model,X_test[MODEL_CONFIGS[args.model]['features']],output_dir)
 
 if __name__ == "__main__":
     main()
