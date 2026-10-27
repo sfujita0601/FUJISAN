@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use FUJISAN, please cite the article below."
+title: FUJISAN
+type: software
+authors:
+  - family-names: Fujita
+    given-names: Suguru
+    affiliation: "Department of Biotechnology, Graduate School of Agricultural and Life Sciences, The University of Tokyo"
+  - family-names: Terada
+    given-names: Tohru
+    affiliation: "Department of Biotechnology, Graduate School of Agricultural and Life Sciences, The University of Tokyo"
+repository-code: "https://github.com/sfujita0601/FUJISAN"
+license: MIT
+keywords:
+  - protein function prediction
+  - sequence similarity
+  - structural similarity
+  - LightGBM
+preferred-citation:
+  type: article
+  title: "Enhanced prediction of protein functional identity through the integration of sequence and structural features"
+  authors:
+    - family-names: Fujita
+      given-names: Suguru
+    - family-names: Terada
+      given-names: Tohru
+  journal: "Computational and Structural Biotechnology Journal"
+  volume: 23
+  start: 4124
+  end: 4130
+  year: 2024
+  doi: "10.1016/j.csbj.2024.11.028"
+  url: "https://doi.org/10.1016/j.csbj.2024.11.028"
