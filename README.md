@@ -14,8 +14,8 @@ https://doi.org/10.1016/j.csbj.2024.11.028
 
 | Model key | Model file | Features | Pocket features | Purpose |
 |---|---|---|:---:|---|
-| `paper2024` | `model/fujisan_paper2024_evalue_pocket_lgbm.txt` |
-| `updated` | `model/fujisan_updated_bitscore_nopocket_lgbm.txt` |
+| `paper2024` | `model/fujisan_paper2024_evalue_pocket_lgbm.txt` | 7: log10 E-value + full-length sequence identity + domain (3) + pocket (2) | Yes | Reproduction of the published FUJISAN model |
+| `updated` | `model/fujisan_updated_bitscore_nopocket_lgbm.txt` | 5: BitScore + full-length sequence identity + domain (3) | No | Post-publication model (added 2025-05-29) |
 
 The model keys, file paths, feature names and thresholds are defined in `MODEL_CONFIGS` in [FUJISAN/run_FUJISAN.py](FUJISAN/run_FUJISAN.py).
 When a model is loaded, its feature names (stored in the LightGBM model file) are checked against `MODEL_CONFIGS`, and before prediction the input columns are checked against the model's features (names and order). A mismatch raises a `ValueError` instead of producing silent predictions.
@@ -99,7 +99,7 @@ pred = (prob >= config['threshold']).astype(int)
 `uv run python FUJISAN/run_FUJISAN.py` (model `paper2024`) evaluates the published model on the test sub-dataset in `test/` (10,400 pairs; 5,200 with identical and 5,200 with different functions).
 
 | Metric | Published (Table 1) | This repository (`Analysis/LightGBMRes_.csv`) |
-|---|---|
+|---|---|---|
 | AUROC | 0.9427 | 0.9427 |
 | AUPR | 0.9413 | 0.9413 |
 | MCC | 0.7421 | 0.7421 |
@@ -134,7 +134,7 @@ GitHub's "Cite this repository" uses [CITATION.cff](CITATION.cff).
 
 ## License
 
-Copyright (c) 2024 Terada Laboratory, The University of Tokyo.
+Copyright (c) 2024 Computational Biology Lab., The University of Tokyo.
 
 - Source code: [MIT License](LICENSE).
 - Model files (`model/`) and data (`test/`): [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
