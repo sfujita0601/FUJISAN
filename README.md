@@ -134,9 +134,16 @@ GitHub's "Cite this repository" uses [CITATION.cff](CITATION.cff).
 
 ## License
 
-The source code is released under the [MIT License](LICENSE).
+Copyright (c) 2024 Terada Laboratory, The University of Tokyo.
 
-The model files (`model/`) and data (`test/`) are derived from Swiss-Prot (Release 2022_04), the AlphaFold Protein Structure Database (v4) and Rhea. Their use may be subject to the terms of these original data sources, and the MIT License may not cover them. TODO: state the license of the model files and data explicitly.
+- Source code: [MIT License](LICENSE).
+- Model files (`model/`) and data (`test/`): [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+  They are derived from the following resources, which are also distributed under CC BY 4.0:
+  - UniProtKB/Swiss-Prot (Release 2022_04), https://www.uniprot.org
+  - AlphaFold Protein Structure Database (v4), https://alphafold.ebi.ac.uk
+  - Rhea, https://www.rhea-db.org
+
+  Please cite the original resources as well as the FUJISAN paper when using them.
 
 ## Changelog
 
