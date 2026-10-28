@@ -14,8 +14,8 @@ https://doi.org/10.1016/j.csbj.2024.11.028
 
 | Model key | Model file | Features | Pocket features | Purpose |
 |---|---|---|:---:|---|
-| `paper2024` | `model/fujisan_paper2024_evalue_pocket_lgbm.txt` | 7: log10 E-value + full-length sequence identity + domain (3) + pocket (2) | Yes | Reproduction of the published FUJISAN model |
-| `updated` | `model/fujisan_updated_bitscore_nopocket_lgbm.txt` | 5: BitScore + full-length sequence identity + domain (3) | No | Post-publication model (added 2025-05-29) |
+| `paper2024` | `model/fujisan_paper2024_evalue_pocket_lgbm.txt` |
+| `updated` | `model/fujisan_updated_bitscore_nopocket_lgbm.txt` |
 
 The model keys, file paths, feature names and thresholds are defined in `MODEL_CONFIGS` in [FUJISAN/run_FUJISAN.py](FUJISAN/run_FUJISAN.py).
 When a model is loaded, its feature names (stored in the LightGBM model file) are checked against `MODEL_CONFIGS`, and before prediction the input columns are checked against the model's features (names and order). A mismatch raises a `ValueError` instead of producing silent predictions.
@@ -33,27 +33,27 @@ Each row is a protein pair. The columns must be exactly the features of the sele
 
 ### `paper2024` (7 features)
 
-| Column | Meaning | Unit / range | Transformation |
-|---|---|---|---|
-| `Full_log10(E_value)` | BLAST E-value between the full-length sequences | log10 scale; training range −200 to 1.0 | log10(E-value). In the paper, E-values ≤ 10^−180 were set to log10 E-value = −200 (Section 2.2.1). In `test/*.tsv` these E-values are stored as `1e-200`, so `np.log10` gives −200. |
-| `Full_SeqID` | BLAST sequence identity between the full-length sequences | percent (0–100); training range 16.73–100 | none (column `Identity` in `test/*.tsv`) |
-| `Dmn_RMSD` | Cα RMSD (TM-align) between the domain pair with the highest average TM-score | Å; training range 0.02–8.64 | none (column `RMSD`) |
-| `Dmn_SeqID` | Sequence identity in the TM-align alignment of that domain pair | fraction (0–1) | none (column `Seq_ID`) |
-| `Dmn_TM` | Average TM-score of that domain pair | 0–1 | none (column `TM-scoreAve`) |
-| `Pckt_RMSD` | Cα RMSD (PyMOL `super`) between the largest pockets in that domain pair | Å; training range 0.0019–9.43 | none (column `Pckt_RMSD`) |
-| `Pckt_SeqID` | Sequence identity between those pockets | fraction (0–1) | none (column `Pckt_SeqID`) |
+| Column | Meaning |
+|---|---|
+| `Full_log10(E_value)` | BLAST E-value between the full-length sequences |
+| `Full_SeqID` | BLAST sequence identity between the full-length sequences |
+| `Dmn_RMSD` | Cα RMSD (TM-align) between the domain pair with the highest average TM-score |
+| `Dmn_SeqID` | Sequence identity in the TM-align alignment of that domain pair |
+| `Dmn_TM` | Average TM-score of that domain pair |
+| `Pckt_RMSD` | Cα RMSD (PyMOL `super`) between the largest pockets in that domain pair |
+| `Pckt_SeqID` | Sequence identity between those pockets |
 
-Training ranges are taken from `feature_infos` in the model file. Definitions follow Section 2.2 of the paper.
+Definitions follow Section 2.2 of the paper.
 
 ### `updated` (5 features)
 
-| Column | Meaning | Unit / range | Transformation |
-|---|---|---|---|
-| `BitScore` | BLAST bit score between the full-length sequences | training range −13.33 to 659.47 | **Not documented in this repository.** The training range contains negative values, so the feature is probably not the raw bit score. TODO: document the transformation. |
-| `Full_SeqID` | same as `paper2024` | | |
-| `Dmn_RMSD` | same as `paper2024` | | |
-| `Dmn_SeqID` | same as `paper2024` | | |
-| `Dmn_TM` | same as `paper2024` | | |
+| Column | Meaning |
+|---|---|
+| `BitScore` | BLAST bit score between the full-length sequences |
+| `Full_SeqID` | same as `paper2024` |
+| `Dmn_RMSD` | same as `paper2024` |
+| `Dmn_SeqID` | same as `paper2024` |
+| `Dmn_TM` | same as `paper2024` |
 
 ## Quick start
 
@@ -99,7 +99,7 @@ pred = (prob >= config['threshold']).astype(int)
 `uv run python FUJISAN/run_FUJISAN.py` (model `paper2024`) evaluates the published model on the test sub-dataset in `test/` (10,400 pairs; 5,200 with identical and 5,200 with different functions).
 
 | Metric | Published (Table 1) | This repository (`Analysis/LightGBMRes_.csv`) |
-|---|---|---|
+|---|---|
 | AUROC | 0.9427 | 0.9427 |
 | AUPR | 0.9413 | 0.9413 |
 | MCC | 0.7421 | 0.7421 |
@@ -134,9 +134,16 @@ GitHub's "Cite this repository" uses [CITATION.cff](CITATION.cff).
 
 ## License
 
-The source code is released under the [MIT License](LICENSE).
+Copyright (c) 2024 Terada Laboratory, The University of Tokyo.
 
-The model files (`model/`) and data (`test/`) are derived from Swiss-Prot (Release 2022_04), the AlphaFold Protein Structure Database (v4) and Rhea. Their use may be subject to the terms of these original data sources, and the MIT License may not cover them. TODO: state the license of the model files and data explicitly.
+- Source code: [MIT License](LICENSE).
+- Model files (`model/`) and data (`test/`): [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+  They are derived from the following resources, which are also distributed under CC BY 4.0:
+  - UniProtKB/Swiss-Prot (Release 2022_04), https://www.uniprot.org
+  - AlphaFold Protein Structure Database (v4), https://alphafold.ebi.ac.uk
+  - Rhea, https://www.rhea-db.org
+
+  Please cite the original resources as well as the FUJISAN paper when using them.
 
 ## Changelog
 
