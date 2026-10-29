@@ -308,6 +308,18 @@ Notes on matching the training data:
   differences; BLAST+ 2.16.0 and 2.17.0 gave identical values for the 40 pairs checked (see
   [docs/validation.md](docs/validation.md)).
 
+### Feature contributions (`explain`)
+
+```bash
+uv run fujisan explain -i out/predictions.tsv -o out/explain.jsonl --tsv out/explain.tsv
+```
+
+For each pair of a feature table (`predictions.tsv`, `features.tsv`, a `pair` output, or any table with the five
+features): the probability (same model and prediction function as above), the raw score, and the SHAP contribution
+of each feature from LightGBM (`pred_contrib=True`). Contributions are in **log-odds**, sum to
+`raw_score − base_value` (checked for every pair and recorded), and are not changes in probability. Rows with
+missing features are marked `skipped`. Format: [docs/interpretation_schema.md](docs/interpretation_schema.md).
+
 ### Reproducibility
 
 Every run writes `run_metadata.json` with: FUJISAN version; model name, file and md5; feature names and their
@@ -391,6 +403,7 @@ Copyright (c) 2024 Computational Biology Lab., The University of Tokyo.
 
 ## Changelog
 
+- Unreleased: Added `fujisan explain` (per-pair SHAP contributions in log-odds, JSONL `fujisan.interpretation` 1.0.0, [docs/interpretation_schema.md](docs/interpretation_schema.md)). Predictions and models are unchanged.
 - 0.2.0: Added the `fujisan` command (`pair`, `search`, `batch`, `cache-info`) that generates the five features of the `updated` model (retrained on raw BLAST bit scores) and predicts with it. The model registry moved from `run_FUJISAN.py` to `FUJISAN/models.py` (imported by `run_FUJISAN.py`; behaviour unchanged). The model files are included in the installed package. Tests in `tests/` (`uv run pytest`); validation in [docs/validation.md](docs/validation.md).
 
 - 2025-05-29: Added the post-publication model without pocket features (`updated`).

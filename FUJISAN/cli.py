@@ -3,6 +3,7 @@
     fujisan pair        five features + probability for one protein pair
     fujisan search      one query -> BLASTP against a database -> AFDB models of the hits -> ranking
     fujisan batch       several queries (AFDB IDs or local files), one sub-directory each
+    fujisan explain     per-pair feature contributions (SHAP, log-odds) of a feature table
     fujisan cache-info  size of the AFDB download cache
 
 Only the ``updated`` model (BitScore, Full_SeqID, Dmn_RMSD, Dmn_SeqID, Dmn_TM)
@@ -20,7 +21,7 @@ import traceback
 from pathlib import Path
 
 from . import __version__
-from .errors import INVALID_INPUT, FujisanError
+from .errors import INVALID_INPUT, MODEL_MISMATCH, FujisanError
 from .features import blast as bl
 from .features import pipeline as pp
 from .features import tmalign as tm
@@ -259,6 +260,40 @@ def cmd_batch(args) -> int:
     return 0
 
 
+def cmd_explain(args) -> int:
+    import pandas as pd
+
+    from . import interpretation as it
+    from .models import MODEL_CONFIGS
+    if args.model not in MODEL_CONFIGS:
+        raise FujisanError(INVALID_INPUT, f"unknown model {args.model!r}")
+    sep = "," if str(args.input).endswith(".csv") else "\t"
+    # only empty cells are missing: IDs such as "NA" stay text; non-numeric features are skipped later
+    df = pd.read_csv(args.input, sep=sep, keep_default_na=False, na_values=[""])
+    id_cols = args.id_columns.split(",") if args.id_columns else None
+    rename = dict(kv.split("=", 1) for kv in args.rename) if args.rename else None
+    try:
+        records = it.explain_table(df, args.model, id_cols=id_cols, rename=rename,
+                                   reference_probability_col=args.reference_probability,
+                                   source={"file": Path(args.input).name})
+    except ValueError as exc:
+        raise FujisanError(INVALID_INPUT, str(exc)) from exc
+    bad = [(r["pair"]["pair_id"], e) for r in records for e in it.validate_record(r)]
+    out = Path(args.output)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    it.write_jsonl(out, records)
+    if args.tsv:
+        it.records_to_frame(records).to_csv(args.tsv, sep="\t", index=False)
+    n_ok = sum(r["status"] == "ok" for r in records)
+    pp.log(f"{n_ok} pairs explained, {len(records) - n_ok} skipped (see skip_reason); written: {out}")
+    pp.log(f"SHAP scale: {it.SHAP_SCALE} (contributions are log-odds, not probability changes)")
+    if bad:
+        for pid, e in bad[:10]:
+            pp.log(f"INVALID {pid}: {e}")
+        raise FujisanError(MODEL_MISMATCH, f"{len(bad)} records failed validation")
+    return 0
+
+
 def cmd_cache_info(args) -> int:
     info = Cache(args.cache_dir).info()
     print(f"Cache directory      {info['cache_dir']}")
@@ -316,6 +351,24 @@ def build_parser() -> argparse.ArgumentParser:
     batch.add_argument("--output", "-o", required=True, help="output directory")
     _common(batch)
     batch.set_defaults(func=cmd_batch)
+
+    ex = sub.add_parser("explain", help="per-pair feature contributions (SHAP, log-odds) as JSONL",
+                        description="Probability, raw score and per-feature SHAP contributions (log-odds) for each "
+                                    "pair of a feature table (e.g. predictions.tsv / features.tsv of `pair` or "
+                                    "`search`). Uses the same model, feature order and prediction function as "
+                                    "prediction. Rows with missing features are reported as skipped, not filled in.")
+    ex.add_argument("--input", "-i", required=True, help="feature table (TSV, or CSV if the name ends in .csv)")
+    ex.add_argument("--output", "-o", required=True, help="output JSONL (schema fujisan.interpretation)")
+    ex.add_argument("--tsv", help="optional flat TSV of the same records")
+    ex.add_argument("--model", default="updated", help="model key (default: updated)")
+    ex.add_argument("--id-columns", help="query,target ID columns (default: ProteinID1,ProteinID2 or "
+                                         "QueryID,TargetID or query_id,target_id)")
+    ex.add_argument("--rename", nargs="*", metavar="OLD=NEW",
+                    help="rename input columns to model feature names, e.g. Full_Bitscore=BitScore")
+    ex.add_argument("--reference-probability", metavar="COLUMN",
+                    help="column with a probability computed elsewhere; its difference is recorded")
+    ex.add_argument("--debug", action="store_true", help="show Python tracebacks")
+    ex.set_defaults(func=cmd_explain)
 
     ci = sub.add_parser("cache-info", help="show the AFDB cache size")
     ci.add_argument("--cache-dir", type=Path, default=None)
