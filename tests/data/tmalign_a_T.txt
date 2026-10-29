@@ -1,0 +1,25 @@
+
+ **********************************************************************
+ * TM-align (Version 20210520): protein and RNA structure alignment   *
+ * References: Y Zhang, J Skolnick. Nucl Acids Res 33, 2302-9 (2005)  *
+ *             S Gong, C Zhang, Y Zhang. Bioinformatics, bz282 (2019) *
+ * Please email comments and suggestions to yangzhanglab@umich.edu    *
+ **********************************************************************
+
+Name of Structure_1: AF-P00509-F1_1-model_v4_pLDDT70.pdb (to be superimposed onto Structure_2)
+Name of Structure_2: AF-Q22067-F1_1-model_v4_pLDDT70.pdb
+Length of Structure_1: 396 residues
+Length of Structure_2: 406 residues
+
+Aligned length= 396, RMSD=   0.97, Seq_ID=n_identical/n_aligned= 0.384
+TM-score= 0.98303 (normalized by length of Structure_1: L=396, d0=7.19)
+TM-score= 0.95915 (normalized by length of Structure_2: L=406, d0=7.27)
+TM-score= 0.97094 (if normalized by average length of two structures: L=401.0, d0=7.23)
+(You should use TM-score normalized by length of the reference structure)
+
+(":" denotes residue pairs of d < 5.0 Angstrom, "." denotes other aligned residues)
+--MFENITAAPADPILGLADLFRADERPGKINLGIGVYKDETGKTPVLTSVKKAEQYLLEN-ETTKNYLGIDGIPEFGRCTQELLFGKGSALINDKRARTAQTPGGTGALRVAADFLAKNTSVKRVWVSNPSWPNHKSVFNSAGL-EVREYAYYDAENHTLDFDALINSLNEAQAGDVVLFHGCCHNPTGIDPTLEQWQTLAQLSVEKGWLPLFDFAYQGFAR-GLEEDAEGLRAFAAMHKELIVASSYSKNFGLYNERVGACTLVAADSETVDRAFSQMKAAIRANYSNPPAHGASVVATILSNDALRAIWEQELTDMRQRIQRMRQLFVNTLQEKGANRDFSFIIKQNGMFSFSGLTKEQVLRLREEFGVYAVASGRVNVAGMTPDNMAPLCEAIVAVL-----
+  ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::     
+MSFFDGIPVAPPIEVFHKNKMYLDETAPVKVNLTIGAYRTEEGQPWVLPVVHETEVEIANDTSLNHEYLPVLGHEGFRKAATELVLGAESPAIKEERSFGVQCLSGTGALRAGAEFLASVCNMKTVYVSNPTWGNHKLVFKKAGFTTVADYTFWDYDNKRVHIEKFLSDLESAPEKSVIILHGCAHNPTGMDPTQEQWKLVAEVIKRKNLFTFFDIAYQGFASGDPAADAWAIRYFVDQGMEMVVSQSFAKNFGLYNERVGNLTVVVNNPAVIAGFQSQMSLVIRANWSNPPAHGARIVHKVLTTPARREQWNQSIQAMSSRIKQMRAALLRHLMDLGTPGTWDHIIQQIGMFSYTGLTSAQVDHLIANHKVFLLRDGRINICGLNTKNVEYVAKAIDETVRAVKS
+
+Total CPU time is  0.20 seconds
