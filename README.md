@@ -17,7 +17,7 @@ https://doi.org/10.1016/j.csbj.2024.11.028
 | `paper2024` | `model/fujisan_paper2024_evalue_pocket_lgbm.txt` | 7: log10 E-value + full-length sequence identity + domain (3) + pocket (2) | Yes | Reproduction of the published FUJISAN model |
 | `updated` | `model/fujisan_updated_blastbitscore_nopocket_lgbm.txt` | 5: BLAST bit score + full-length sequence identity + domain (3) | No | Post-publication model (added 2025-05-29, retrained 2026-10-29) |
 
-The model keys, file paths, feature names and thresholds are defined in `MODEL_CONFIGS` in [FUJISAN/run_FUJISAN.py](FUJISAN/run_FUJISAN.py).
+The model keys, file paths, feature names and thresholds are defined in `MODEL_CONFIGS` in [FUJISAN/models.py](FUJISAN/models.py) (also imported by `FUJISAN/run_FUJISAN.py`).
 When a model is loaded, its feature names (stored in the LightGBM model file) are checked against `MODEL_CONFIGS`, and before prediction the input columns are checked against the model's features (names and order). A mismatch raises a `ValueError` instead of producing silent predictions.
 
 ## Paper version and updated version
@@ -27,7 +27,7 @@ The repository contains two FUJISAN models.
 - `paper2024` is the model used in the published study. Use it to reproduce the results of the paper. It is the default of `run_FUJISAN.py`.
 - `updated` is a post-publication model with a different feature set (BLAST bit score instead of E-value, no pocket features). As discussed in the paper (Section 3.6), the bit score is intended for applying FUJISAN to proteins that are not in the Swiss-Prot database. This model is **not** the model of the published study and should not be used to reproduce the published results. Its performance has not been reported in the paper, and the test data in this repository cannot be used to evaluate it because it has no `BitScore` column. No validated classification threshold is defined for it (`threshold: None`).
 
-  The `BitScore` feature is the bit score reported by `blastp` (BLAST+ 2.17.0, default scoring parameters, `-max_hsps 1`) for the full-length sequence pair, with the first protein as the query. Use the value as reported by BLAST; it does not depend on the database size. For reference, on the same 10,400 test pairs as `paper2024` (with BLAST bit scores added), the model gives AUROC 0.9440 and AUPR 0.9434.
+  The `BitScore` feature is the bit score reported by `blastp` (BLAST+ 2.17.0, default scoring parameters, `-max_hsps 1`) for the full-length sequence pair, with the first protein as the query. The bit score itself is not normalised by the database size, but the search context can change which alignment (HSP) BLAST reports: in our validation, P0A6V0–B0SFJ4 gave `BitScore` 203 / `Full_SeqID` 30.242 with single-pair BLAST and 205 / 31.020 in a search of a 227k-sequence database ([docs/validation.md](docs/validation.md)). The feature-generation pipeline therefore recomputes `BitScore` and `Full_SeqID` with pairwise BLAST for each protein pair; the database searches of `search` and `batch` are used only to identify candidate targets. For reference, on the same 10,400 test pairs as `paper2024` (with BLAST bit scores added), the model gives AUROC 0.9440 and AUPR 0.9434.
 
 ## Input format
 
@@ -97,7 +97,7 @@ Output:
 
 ```python
 import pandas as pd
-from FUJISAN.run_FUJISAN import MODEL_CONFIGS, load_model, predict_proba
+from FUJISAN.models import MODEL_CONFIGS, load_model, predict_proba
 
 config = MODEL_CONFIGS['paper2024']
 model = load_model('paper2024')
