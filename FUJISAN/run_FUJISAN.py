@@ -53,7 +53,7 @@ MODEL_CONFIGS = {
         'description': 'Model used in the published study (E-value + sequence + domain + pocket features)',
     },
     'updated': {
-        'model_path': os.path.join(MODEL_DIR, 'fujisan_updated_bitscore_nopocket_lgbm.txt'),
+        'model_path': os.path.join(MODEL_DIR, 'fujisan_updated_blastbitscore_nopocket_lgbm.txt'),
         'features': UPDATED_FEATURES,
         # No validated threshold is available for this model in this repository.
         'threshold': None,
