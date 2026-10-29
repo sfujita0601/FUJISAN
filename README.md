@@ -15,7 +15,7 @@ https://doi.org/10.1016/j.csbj.2024.11.028
 | Model key | Model file | Features | Pocket features | Purpose |
 |---|---|---|:---:|---|
 | `paper2024` | `model/fujisan_paper2024_evalue_pocket_lgbm.txt` | 7: log10 E-value + full-length sequence identity + domain (3) + pocket (2) | Yes | Reproduction of the published FUJISAN model |
-| `updated` | `model/fujisan_updated_bitscore_nopocket_lgbm.txt` | 5: BitScore + full-length sequence identity + domain (3) | No | Post-publication model (added 2025-05-29) |
+| `updated` | `model/fujisan_updated_blastbitscore_nopocket_lgbm.txt` | 5: BLAST bit score + full-length sequence identity + domain (3) | No | Post-publication model (added 2025-05-29, retrained 2026-10-29) |
 
 The model keys, file paths, feature names and thresholds are defined in `MODEL_CONFIGS` in [FUJISAN/run_FUJISAN.py](FUJISAN/run_FUJISAN.py).
 When a model is loaded, its feature names (stored in the LightGBM model file) are checked against `MODEL_CONFIGS`, and before prediction the input columns are checked against the model's features (names and order). A mismatch raises a `ValueError` instead of producing silent predictions.
@@ -26,6 +26,8 @@ The repository contains two FUJISAN models.
 
 - `paper2024` is the model used in the published study. Use it to reproduce the results of the paper. It is the default of `run_FUJISAN.py`.
 - `updated` is a post-publication model with a different feature set (BLAST bit score instead of E-value, no pocket features). As discussed in the paper (Section 3.6), the bit score is intended for applying FUJISAN to proteins that are not in the Swiss-Prot database. This model is **not** the model of the published study and should not be used to reproduce the published results. Its performance has not been reported in the paper, and the test data in this repository cannot be used to evaluate it because it has no `BitScore` column. No validated classification threshold is defined for it (`threshold: None`).
+
+  The `BitScore` feature is the bit score reported by `blastp` (BLAST+ 2.17.0, default scoring parameters, `-max_hsps 1`) for the full-length sequence pair, with the first protein as the query. Use the value as reported by BLAST; it does not depend on the database size. For reference, on the same 10,400 test pairs as `paper2024` (with BLAST bit scores added), the model gives AUROC 0.9440 and AUPR 0.9434.
 
 ## Input format
 
@@ -49,7 +51,7 @@ Definitions follow Section 2.2 of the paper.
 
 | Column | Meaning |
 |---|---|
-| `BitScore` | BLAST bit score between the full-length sequences |
+| `BitScore` | BLAST bit score between the full-length sequences (`bitscore` column of `blastp` output) |
 | `Full_SeqID` | same as `paper2024` |
 | `Dmn_RMSD` | same as `paper2024` |
 | `Dmn_SeqID` | same as `paper2024` |
@@ -149,3 +151,4 @@ Copyright (c) 2024 Computational Biology Lab., The University of Tokyo.
 
 - 2025-05-29: Added the post-publication model without pocket features (`updated`).
 - improve-reproducibility-v1: Renamed the model files (previous names: `LightGBMmodel_best.txt` → `fujisan_paper2024_evalue_pocket_lgbm.txt`, `LightGBMmodel_0102BitScore.txt` → `fujisan_updated_bitscore_nopocket_lgbm.txt`). `run_FUJISAN.py` uses `paper2024` by default again and selects the model with `--model`. In `LightGBMRes_.csv`, `F1` is now the F1 at the fixed threshold (previously the maximum F1 over test-set thresholds, now reported as `F1_max_test_diagnostic`).
+- 2026-10-29: Retrained `updated` with BLAST bit scores (`fujisan_updated_blastbitscore_nopocket_lgbm.txt`). The previous `updated` model (`fujisan_updated_bitscore_nopocket_lgbm.txt`, still in the git history) was trained on −log2(E-value) − log2(query length) instead of the BLAST bit score, so it gave wrong scores when given BLAST bit scores. Hyperparameters were tuned with stratified, shuffled 5-fold cross-validation on the training data only; the test data was not used for early stopping.
