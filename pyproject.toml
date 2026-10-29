@@ -1,13 +1,15 @@
 [project]
 name = "fujisan"
-version = "0.1.0"
+version = "0.2.0"
 description = "FUJISAN: prediction of protein functional identity from sequence and structural similarity features"
 readme = "README.md"
 requires-python =  ">=3.9"
 dependencies = [
+    "gemmi>=0.6",
     "lightgbm>=4.5.0",
     "matplotlib>=3.9.2",
     "pandas>=2.2.3",
+    "python-igraph>=0.10",
     "scikit-learn>=1.5.2",
     "seaborn>=0.13.2",
     "shap>=0.46",
@@ -19,6 +21,17 @@ build-backend = "hatchling.build"
 
 [project.scripts]
 run_FUJISAN = 'FUJISAN.run_FUJISAN:main'
+fujisan = 'FUJISAN.cli:main'
 
 [tool.hatch.build.targets.wheel]
 packages = ["FUJISAN"]
+
+# Model files are shipped inside the package (FUJISAN/model) so that an installed
+# `fujisan` / `run_FUJISAN` finds them via importlib.resources (FUJISAN/models.py).
+[tool.hatch.build.targets.wheel.force-include]
+"model" = "FUJISAN/model"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+]
