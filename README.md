@@ -58,6 +58,7 @@ Requirements: Python ≥ 3.9 and [uv](https://docs.astral.sh/uv/) (versions are 
 git clone https://github.com/sfujita0601/FUJISAN.git
 cd FUJISAN
 uv sync                       # then: uv run fujisan ...
+uv run fujisan --help
 ```
 
 Or install the package (the models are included, and `fujisan` then works from any directory):
