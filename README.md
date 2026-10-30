@@ -52,7 +52,7 @@ When a model is loaded, its feature names (stored in the LightGBM model file) ar
 
 ## Installation
 
-Requirements: Python ≥ 3.9 and [uv](https://docs.astral.sh/uv/) (versions are pinned in `uv.lock`).
+Requirements: Python ≥ 3.11 (tested with 3.11 and 3.12) and [uv](https://docs.astral.sh/uv/) (versions are pinned in `uv.lock`).
 
 ```bash
 git clone https://github.com/sfujita0601/FUJISAN.git
@@ -170,6 +170,7 @@ Copyright (c) 2024 Computational Biology Lab., The University of Tokyo.
 
 ## Changelog
 
+- Unreleased: Python ≥ 3.11 is required (Python 3.9 and 3.10 are no longer supported; use 0.2.0 for them). Dependency updates for security advisories: LightGBM pinned to 4.6.0 (CVE-2024-43598), Pillow 13.0.0, fontTools 4.60.2 or later, pytest 9.0.3 or later; other locked versions are unchanged apart from the Python 3.11 resolution (numpy 2.1.3, scipy 1.14.1, numba 0.68.0). Model files are unchanged; predictions, raw scores and LightGBM feature contributions of both models, the `run_FUJISAN.py` outputs and the PAE domain segmentation were identical to Python 3.9 / LightGBM 4.5.0.
 - 0.2.0: Added the `fujisan` command (`pair`, `search`, `batch`, `cache-info`) that generates the five features of the `updated` model (retrained on raw BLAST bit scores) and predicts with it. The model registry moved from `run_FUJISAN.py` to `FUJISAN/models.py` (imported by `run_FUJISAN.py`; behaviour unchanged). The model files are included in the installed package. Tests in `tests/` (`uv run pytest`); validation in [docs/validation.md](docs/validation.md). Documentation reorganized into `docs/`.
 
 - 2025-05-29: Added the post-publication model without pocket features (`updated`).

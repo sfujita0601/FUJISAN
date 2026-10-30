@@ -38,7 +38,7 @@ Validation of the pipeline against the historical FUJISAN features is described 
 
 ## Requirements
 
-- Python ≥ 3.9 and [uv](https://docs.astral.sh/uv/) (`uv sync` installs the Python dependencies, including
+- Python ≥ 3.11 and [uv](https://docs.astral.sh/uv/) (`uv sync` installs the Python dependencies, including
   `python-igraph` for pae_to_domains and `gemmi` for reading PDB / mmCIF files).
 - `uv sync` in a clone (then `uv run fujisan ...`), or `python3 -m pip install .` (then `fujisan ...` from any
   directory). The model files are included in the installed package (`FUJISAN/model`) and found with
