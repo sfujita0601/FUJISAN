@@ -1,0 +1,28 @@
+name: tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      # --frozen: install exactly what uv.lock pins; fail instead of re-resolving.
+      - run: uv sync --frozen --python ${{ matrix.python-version }}
+      # BLAST+ / TM-align integration tests are skipped when the binaries are not on PATH;
+      # -rs prints the skip reasons in the log.
+      - run: uv run --frozen pytest -q -rs
